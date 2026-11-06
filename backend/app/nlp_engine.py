@@ -13,11 +13,12 @@ def get_model():
         _model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
     return _model
 
-# Preset technical skill pool for gap analysis
+# Preset technical skill pool with common variations/plurals
 PRESET_SKILLS = [
-    "python", "javascript", "react", "fastapi", "django", "postgresql", "docker",
-    "git", "github", "machine learning", "nlp", "scikit-learn", "tensorflow",
-    "pytorch", "rest api", "html", "css", "sql", "aws", "kubernetes", "c++", "java"
+    "python", "javascript", "typescript", "react", "fastapi", "django", 
+    "postgresql", "postgres", "docker", "git", "github", "machine learning", 
+    "nlp", "scikit-learn", "tensorflow", "pytorch", "rest api", "rest apis", 
+    "restful api", "html", "css", "sql", "aws", "kubernetes", "c++", "java", "node.js"
 ]
 
 def extract_skills(text: str):
@@ -28,7 +29,13 @@ def extract_skills(text: str):
     for skill in PRESET_SKILLS:
         pattern = r'\b' + re.escape(skill) + r'\b'
         if re.search(pattern, text_lower):
-            found_skills.add(skill.title())
+            # Normalize variations cleanly for display
+            display_name = skill.title()
+            if "rest api" in skill:
+                display_name = "REST API"
+            elif skill == "postgresql" or skill == "postgres":
+                display_name = "PostgreSQL"
+            found_skills.add(display_name)
     return list(found_skills)
 
 def calculate_tfidf_similarity(text1: str, text2: str) -> float:
