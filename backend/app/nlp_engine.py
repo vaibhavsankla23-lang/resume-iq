@@ -3,10 +3,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 
-# Load model safely at startup to avoid runtime request spikes
-print("Loading AI Model...")
-_model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
-print("AI Model Loaded Successfully!")
+# Lazy-loaded model instance to prevent global startup RAM spikes & port timeouts
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        print("Loading AI Model on demand...")
+        _model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
+        print("AI Model Loaded Successfully!")
+    return _model
 
 PRESET_SKILLS = [
     "python", "javascript", "typescript", "react", "fastapi", "django", 
@@ -42,7 +48,8 @@ def calculate_tfidf_similarity(text1: str, text2: str) -> float:
 def calculate_semantic_similarity(text1: str, text2: str) -> float:
     if not text1 or not text2:
         return 0.0
-    embeddings = _model.encode([text1, text2])
+    model = get_model()  # Loads model only when needed
+    embeddings = model.encode([text1, text2])
     similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
     return float(similarity)
 
