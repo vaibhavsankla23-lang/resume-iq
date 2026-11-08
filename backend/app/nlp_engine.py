@@ -3,17 +3,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 
-# Lazy-loaded model instance to prevent global startup RAM spikes
-_model = None
+# Load model safely at startup to avoid runtime request spikes
+print("Loading AI Model...")
+_model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
+print("AI Model Loaded Successfully!")
 
-def get_model():
-    global _model
-    if _model is None:
-        # Load lightweight CPU-friendly model on demand
-        _model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
-    return _model
-
-# Preset technical skill pool with common variations/plurals
 PRESET_SKILLS = [
     "python", "javascript", "typescript", "react", "fastapi", "django", 
     "postgresql", "postgres", "docker", "git", "github", "machine learning", 
@@ -29,7 +23,6 @@ def extract_skills(text: str):
     for skill in PRESET_SKILLS:
         pattern = r'\b' + re.escape(skill) + r'\b'
         if re.search(pattern, text_lower):
-            # Normalize variations cleanly for display
             display_name = skill.title()
             if "rest api" in skill:
                 display_name = "REST API"
@@ -49,36 +42,28 @@ def calculate_tfidf_similarity(text1: str, text2: str) -> float:
 def calculate_semantic_similarity(text1: str, text2: str) -> float:
     if not text1 or not text2:
         return 0.0
-    model = get_model()
-    embeddings = model.encode([text1, text2])
+    embeddings = _model.encode([text1, text2])
     similarity = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
     return float(similarity)
 
 def analyze_resume_vs_jd(resume_text: str, jd_text: str):
-    # 1. TF-IDF Similarity
     tfidf_score = round(calculate_tfidf_similarity(resume_text, jd_text) * 100, 2)
-    
-    # 2. Semantic Similarity via SentenceTransformers (Loaded lazily)
     semantic_score = round(calculate_semantic_similarity(resume_text, jd_text) * 100, 2)
-
-    # 3. Weighted Job-Matching Engine Score
     overall_score = round((tfidf_score * 0.3) + (semantic_score * 0.7), 2)
 
-    # 4. Skill Extraction & Skill Gap Analysis
     resume_skills = set(extract_skills(resume_text))
     jd_skills = set(extract_skills(jd_text))
 
     matched_skills = list(resume_skills.intersection(jd_skills))
     missing_skills = list(jd_skills - resume_skills)
 
-    # 5. Dynamic Recommendations
     recommendations = []
     if missing_skills:
-        recommendations.append(f"Add projects or certifications demonstrating experience in: {', '.join(missing_skills)}.")
+        recommendations.append(f"Add experience or mention keywords for: {', '.join(missing_skills)}.")
     if overall_score < 60:
         recommendations.append("Tailor your summary and experience section using keywords directly from the job description.")
     else:
-        recommendations.append("Strong alignment! Make sure your impact metrics (%, $, key results) are clearly visible.")
+        recommendations.append("Strong alignment! Ensure your impact metrics and achievements are clearly visible.")
 
     return {
         "overall_score": overall_score,
